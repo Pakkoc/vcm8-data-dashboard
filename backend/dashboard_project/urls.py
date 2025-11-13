@@ -15,11 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/auth/', include('apps.users.urls')),
     path('api/v1/dashboard/', include('apps.dashboard.urls')),
     path('api/v1/data-upload/', include('apps.data_upload.urls')),
+
+    # Catch-all pattern: 모든 non-API 요청을 React SPA로 라우팅
+    # API 경로가 아닌 모든 경로는 index.html을 반환
+    re_path(r'^(?!api/).*$', TemplateView.as_view(template_name='index.html'), name='frontend'),
 ]

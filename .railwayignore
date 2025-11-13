@@ -1,0 +1,49 @@
+# Node modules
+frontend/node_modules/
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+
+# Environment files (설정은 Railway UI에서)
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+**/*test*.py
+**/tests/
+frontend/src/**/*.test.js
+frontend/src/**/*.test.jsx
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# Build artifacts (frontend는 빌드 시 생성)
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
