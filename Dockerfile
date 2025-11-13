@@ -6,7 +6,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-RUN npm run build
+# Override outDir to build to dist folder instead of ../backend/staticfiles
+RUN npm run build -- --outDir=dist
 
 # Stage 2: Python runtime
 FROM python:3.11-slim
