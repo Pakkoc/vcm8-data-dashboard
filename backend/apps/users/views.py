@@ -71,13 +71,30 @@ class LoginView(APIView):
                 )
 
             print(f"✅ 로그인 성공: {auth_response.user.id}")
-            # 3. 응답 데이터 구성
+
+            # 3. Profile 조회 또는 생성
+            from .models import Profile
+            profile, created = Profile.objects.get_or_create(
+                id=auth_response.user.id,
+                defaults={
+                    'email': auth_response.user.email,
+                    'username': auth_response.user.email.split('@')[0]
+                }
+            )
+            if created:
+                print(f"🆕 새 프로필 생성: {profile.email} (role: {profile.role})")
+            else:
+                print(f"📋 기존 프로필 로드: {profile.email} (role: {profile.role})")
+
+            # 4. 응답 데이터 구성
             return Response({
                 "access_token": auth_response.session.access_token,
                 "refresh_token": auth_response.session.refresh_token,
                 "user": {
-                    "id": auth_response.user.id,
-                    "email": auth_response.user.email
+                    "id": str(auth_response.user.id),
+                    "email": auth_response.user.email,
+                    "role": profile.role,
+                    "username": profile.username
                 }
             }, status=status.HTTP_200_OK)
 
