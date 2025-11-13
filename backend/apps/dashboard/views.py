@@ -1,9 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 import logging
 
+from apps.users.permissions import IsAuthenticatedViaSupabase
 from .services.summary_generator import DashboardSummaryService
 from .serializers import DashboardSummarySerializer
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class DashboardSummaryView(APIView):
     """대시보드 요약 데이터 조회 API"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedViaSupabase]
 
     def get(self, request):
         """

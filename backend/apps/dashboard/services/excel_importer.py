@@ -44,18 +44,38 @@ class ExcelImportService:
             각 테이블별 삽입된 레코드 수
         """
         # 1. 엑셀 파일 읽기
+        print(f"[ExcelImporter] 파일 읽기 시작: {file_path}")
         dataframes = self._read_excel_file(file_path)
+        print(f"[ExcelImporter] 읽은 데이터프레임: {list(dataframes.keys())}")
+        for key, df in dataframes.items():
+            print(f"[ExcelImporter]   - {key}: {len(df)}행, 컬럼: {list(df.columns)}")
 
         # 2. 데이터 검증
-        self._validate_data(dataframes)
+        print("[ExcelImporter] 데이터 검증 시작...")
+        try:
+            self._validate_data(dataframes)
+            print("[ExcelImporter] 데이터 검증 완료")
+        except Exception as e:
+            print(f"[ExcelImporter] ❌ 데이터 검증 실패: {e}")
+            raise
 
-        # 3. 기존 데이터 삭제
-        self._delete_existing_data()
+        # 3. 기존 데이터 삭제 (선택적)
+        # CSV 파일인 경우: 해당 테이블만 삭제
+        # Excel 파일인 경우: 모든 데이터 삭제
+        is_csv = file_path.lower().endswith('.csv')
+        if is_csv:
+            print(f"[ExcelImporter] CSV 모드: {list(dataframes.keys())} 테이블만 삭제...")
+            self._delete_specific_data(dataframes.keys())
+        else:
+            print("[ExcelImporter] Excel 모드: 기존 데이터 전체 삭제...")
+            self._delete_existing_data()
 
         # 4. 단과대학 및 학과 추출 및 저장
+        print("[ExcelImporter] 단과대학 및 학과 저장...")
         college_mapping, department_mapping = self._save_colleges_and_departments(
             dataframes
         )
+        print(f"[ExcelImporter] 저장 완료 - 단과대학: {len(college_mapping)}, 학과: {len(department_mapping)}")
 
         # 5. 각 테이블 데이터 저장
         result = {
@@ -69,28 +89,151 @@ class ExcelImportService:
         }
 
         if 'students' in dataframes:
+            print("[ExcelImporter] 학생 데이터 저장 중...")
             result['students'] = self._save_students(
                 dataframes['students'], department_mapping
             )
+            print(f"[ExcelImporter] 학생 데이터 {result['students']}개 저장 완료")
 
         if 'kpis' in dataframes:
+            print("[ExcelImporter] KPI 데이터 저장 중...")
             result['department_kpis'] = self._save_kpis(
                 dataframes['kpis'], department_mapping
             )
+            print(f"[ExcelImporter] KPI 데이터 {result['department_kpis']}개 저장 완료")
 
         if 'publications' in dataframes:
+            print("[ExcelImporter] 논문 데이터 저장 중...")
             result['publications'] = self._save_publications(
                 dataframes['publications'], department_mapping
             )
+            print(f"[ExcelImporter] 논문 데이터 {result['publications']}개 저장 완료")
 
         if 'projects' in dataframes:
+            print("[ExcelImporter] 프로젝트 데이터 저장 중...")
             projects_count, expenses_count = self._save_projects_and_expenses(
                 dataframes['projects'], department_mapping
             )
             result['research_projects'] = projects_count
             result['project_expenses'] = expenses_count
+            print(f"[ExcelImporter] 프로젝트 {projects_count}개, 지출 {expenses_count}개 저장 완료")
 
+        print(f"[ExcelImporter] ✅ Import 완료: {result}")
         return result
+
+    @transaction.atomic
+    def import_from_multiple_files(self, file_paths: list) -> Dict[str, int]:
+        """
+        여러 파일을 동시에 읽어 데이터베이스에 저장
+        순서 상관없이 업로드 가능
+
+        Returns:
+            각 테이블별 삽입된 레코드 수
+        """
+        print(f"[ExcelImporter] 배치 Import 시작: {len(file_paths)}개 파일")
+
+        # 1. 모든 파일 읽기
+        all_dataframes = {}
+        for file_path in file_paths:
+            print(f"[ExcelImporter] 파일 읽기: {file_path}")
+            dataframes = self._read_excel_file(file_path)
+            print(f"[ExcelImporter]   읽은 데이터프레임: {list(dataframes.keys())}")
+
+            # 같은 타입의 데이터프레임을 합치기
+            for key, df in dataframes.items():
+                if key in all_dataframes:
+                    # 기존 데이터에 추가
+                    all_dataframes[key] = pd.concat([all_dataframes[key], df], ignore_index=True)
+                    print(f"[ExcelImporter]   - {key}: {len(df)}행 추가 (총 {len(all_dataframes[key])}행)")
+                else:
+                    all_dataframes[key] = df
+                    print(f"[ExcelImporter]   - {key}: {len(df)}행")
+
+        print(f"[ExcelImporter] 전체 데이터프레임: {list(all_dataframes.keys())}")
+        for key, df in all_dataframes.items():
+            print(f"[ExcelImporter]   - {key}: 총 {len(df)}행")
+
+        # 2. 데이터 검증
+        print("[ExcelImporter] 데이터 검증 시작...")
+        try:
+            self._validate_data(all_dataframes)
+            print("[ExcelImporter] 데이터 검증 완료")
+        except Exception as e:
+            print(f"[ExcelImporter] ❌ 데이터 검증 실패: {e}")
+            raise
+
+        # 3. 기존 데이터 전체 삭제
+        print("[ExcelImporter] 기존 데이터 전체 삭제...")
+        self._delete_existing_data()
+
+        # 4. Pass 1: 단과대학 및 학과 추출 및 저장
+        print("[ExcelImporter] Pass 1: 단과대학 및 학과 저장...")
+        college_mapping, department_mapping = self._save_colleges_and_departments(
+            all_dataframes
+        )
+        print(f"[ExcelImporter] 저장 완료 - 단과대학: {len(college_mapping)}, 학과: {len(department_mapping)}")
+
+        # 5. Pass 2: 각 테이블 데이터 저장
+        result = {
+            'colleges': len(college_mapping),
+            'departments': len(department_mapping),
+            'students': 0,
+            'department_kpis': 0,
+            'publications': 0,
+            'research_projects': 0,
+            'project_expenses': 0,
+        }
+
+        if 'students' in all_dataframes:
+            print("[ExcelImporter] Pass 2: 학생 데이터 저장 중...")
+            result['students'] = self._save_students(
+                all_dataframes['students'], department_mapping
+            )
+            print(f"[ExcelImporter] 학생 데이터 {result['students']}개 저장 완료")
+
+        if 'kpis' in all_dataframes:
+            print("[ExcelImporter] Pass 2: KPI 데이터 저장 중...")
+            result['department_kpis'] = self._save_kpis(
+                all_dataframes['kpis'], department_mapping
+            )
+            print(f"[ExcelImporter] KPI 데이터 {result['department_kpis']}개 저장 완료")
+
+        if 'publications' in all_dataframes:
+            print("[ExcelImporter] Pass 2: 논문 데이터 저장 중...")
+            result['publications'] = self._save_publications(
+                all_dataframes['publications'], department_mapping
+            )
+            print(f"[ExcelImporter] 논문 데이터 {result['publications']}개 저장 완료")
+
+        if 'projects' in all_dataframes:
+            print("[ExcelImporter] Pass 2: 프로젝트 데이터 저장 중...")
+            projects_count, expenses_count = self._save_projects_and_expenses(
+                all_dataframes['projects'], department_mapping
+            )
+            result['research_projects'] = projects_count
+            result['project_expenses'] = expenses_count
+            print(f"[ExcelImporter] 프로젝트 {projects_count}개, 지출 {expenses_count}개 저장 완료")
+
+        print(f"[ExcelImporter] ✅ 배치 Import 완료: {result}")
+        return result
+
+    def _normalize_column_name(self, col_name: str) -> str:
+        """
+        컬럼명 정규화
+        - 모든 공백 제거 (단어 사이 공백 포함)
+        - 괄호와 괄호 안의 내용 제거
+        """
+        import re
+        # 괄호와 괄호 안의 내용 제거
+        col_name = re.sub(r'\s*\([^)]*\)', '', col_name)
+        # 모든 공백 제거 (단어 사이 공백도 포함)
+        col_name = re.sub(r'\s+', '', col_name)
+        return col_name
+
+    def _normalize_dataframe_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """DataFrame의 모든 컬럼명 정규화"""
+        df.columns = [self._normalize_column_name(col) for col in df.columns]
+        return df
 
     def _read_excel_file(self, file_path: str) -> Dict[str, pd.DataFrame]:
         """엑셀 파일 읽기"""
@@ -98,6 +241,9 @@ class ExcelImportService:
             # CSV 파일인 경우
             if file_path.endswith('.csv'):
                 df = pd.read_csv(file_path)
+                # 컬럼명 정규화
+                df = self._normalize_dataframe_columns(df)
+
                 # CSV 파일명으로 시트 이름 판단
                 if 'student' in file_path.lower():
                     return {'students': df}
@@ -116,6 +262,8 @@ class ExcelImportService:
 
             for sheet_name in excel_file.sheet_names:
                 df = pd.read_excel(file_path, sheet_name=sheet_name)
+                # 컬럼명 정규화
+                df = self._normalize_dataframe_columns(df)
 
                 # 시트 이름으로 데이터 종류 판단
                 sheet_lower = sheet_name.lower()
@@ -173,6 +321,23 @@ class ExcelImportService:
         self.department_repo.delete_all()
         self.college_repo.delete_all()
 
+    def _delete_specific_data(self, data_types: list) -> None:
+        """특정 테이블만 삭제 (CSV 개별 업로드용)"""
+        for data_type in data_types:
+            if data_type == 'students':
+                print("[ExcelImporter]   - 학생 데이터 삭제")
+                self.student_repo.delete_all()
+            elif data_type == 'kpis':
+                print("[ExcelImporter]   - KPI 데이터 삭제")
+                self.kpi_repo.delete_all()
+            elif data_type == 'publications':
+                print("[ExcelImporter]   - 논문 데이터 삭제")
+                self.publication_repo.delete_all()
+            elif data_type == 'projects':
+                print("[ExcelImporter]   - 프로젝트 및 지출 데이터 삭제")
+                self.expense_repo.delete_all()
+                self.project_repo.delete_all()
+
     def _save_colleges_and_departments(
         self, dataframes: Dict[str, pd.DataFrame]
     ) -> tuple:
@@ -209,6 +374,19 @@ class ExcelImportService:
                 college, dept_name
             )
             department_mapping[f"{college_name}|{dept_name}"] = department.id
+
+        # 매핑이 비어있는 경우 (예: research_project_data.csv처럼 단과대학 정보가 없는 경우)
+        # 데이터베이스에서 기존 학과들을 모두 가져와서 매핑 생성
+        if not department_mapping:
+            print("[ExcelImporter]   단과대학 정보 없음 - 기존 학과 매핑 사용")
+            from apps.dashboard.models import Department
+            departments = Department.objects.select_related('college').all()
+            for dept in departments:
+                key = f"{dept.college.name}|{dept.name}"
+                department_mapping[key] = dept.id
+                if dept.college.name not in college_mapping:
+                    college_mapping[dept.college.name] = dept.college.id
+            print(f"[ExcelImporter]   기존 매핑: {len(college_mapping)}개 단과대학, {len(department_mapping)}개 학과")
 
         return college_mapping, department_mapping
 
@@ -269,17 +447,24 @@ class ExcelImportService:
             if key not in dept_mapping:
                 continue
 
+            # 게재일 또는 게재일자 컬럼 지원
+            pub_date_col = '게재일' if '게재일' in row else '게재일자'
+
             publication = Publication(
                 publication_id_str=str(row['논문ID']) if pd.notna(row.get('논문ID')) else None,
-                publication_date=pd.to_datetime(row['게재일자']).date(),
+                publication_date=pd.to_datetime(row[pub_date_col]).date(),
                 department_id=dept_mapping[key],
                 title=str(row['논문제목']),
-                primary_author=str(row['제1저자']) if pd.notna(row.get('제1저자')) else None,
-                contributing_authors=str(row['참여저자목록']) if pd.notna(row.get('참여저자목록')) else None,
+                # '주저자' 또는 '제1저자' 컬럼 지원
+                primary_author=str(row.get('주저자', row.get('제1저자', ''))) if pd.notna(row.get('주저자', row.get('제1저자'))) else None,
+                # '참여저자' 또는 '참여저자목록' 컬럼 지원
+                contributing_authors=str(row.get('참여저자', row.get('참여저자목록', ''))) if pd.notna(row.get('참여저자', row.get('참여저자목록'))) else None,
                 journal_name=str(row['학술지명']) if pd.notna(row.get('학술지명')) else None,
-                journal_rank=str(row['학술지등급']) if pd.notna(row.get('학술지등급')) else None,
-                impact_factor=float(row['IF']) if pd.notna(row.get('IF')) else None,
-                is_project_linked=bool(row['과제연계여부']) if pd.notna(row.get('과제연계여부')) else None,
+                # '저널등급' 또는 '학술지등급' 컬럼 지원
+                journal_rank=str(row.get('저널등급', row.get('학술지등급', ''))) if pd.notna(row.get('저널등급', row.get('학술지등급'))) else None,
+                # 'ImpactFactor' (정규화된) 또는 'IF' 컬럼 지원
+                impact_factor=float(row.get('ImpactFactor', row.get('IF', 0))) if pd.notna(row.get('ImpactFactor', row.get('IF'))) else None,
+                is_project_linked=bool(row.get('과제연계여부', 'N') == 'Y') if pd.notna(row.get('과제연계여부')) else False,
             )
             publications.append(publication)
 
@@ -299,7 +484,24 @@ class ExcelImportService:
 
         for project_number, group in project_groups:
             first_row = group.iloc[0]
-            key = f"{first_row['단과대학']}|{first_row['학과']}"
+
+            # 단과대학과 학과가 별도 컬럼인 경우
+            if '단과대학' in first_row and '학과' in first_row:
+                key = f"{first_row['단과대학']}|{first_row['학과']}"
+            # 소속학과만 있는 경우 (학과명만으로 검색)
+            elif '소속학과' in first_row:
+                dept_name = first_row['소속학과']
+                # 학과명으로 매핑 찾기
+                key = None
+                for k in dept_mapping.keys():
+                    if k.endswith(f"|{dept_name}"):
+                        key = k
+                        break
+                if not key:
+                    continue
+            else:
+                continue
+
             if key not in dept_mapping:
                 continue
 
@@ -336,7 +538,7 @@ class ExcelImportService:
                         execution_date=pd.to_datetime(row['집행일자']).date(),
                         item=str(row['집행항목']),
                         amount=int(row['집행금액']),
-                        status=str(row['처리상태']),
+                        status=str(row.get('상태', row.get('처리상태', ''))),  # '상태' 또는 '처리상태' 컬럼 지원
                         notes=str(row['비고']) if pd.notna(row.get('비고')) else None,
                     )
                     expenses.append(expense)

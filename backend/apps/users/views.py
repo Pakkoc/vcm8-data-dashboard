@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from .serializers import LoginSerializer, ProfileSerializer
 from .repositories import ProfileRepository
+from .permissions import IsAuthenticatedViaSupabase
 from supabase import create_client, Client
 from django.conf import settings
 import os
@@ -42,6 +43,9 @@ class LoginView(APIView):
         try:
             # 2. Supabase Auth를 통한 인증
             if supabase is None:
+                print("❌ Supabase 클라이언트가 초기화되지 않았습니다.")
+                print(f"   SUPABASE_URL: {SUPABASE_URL}")
+                print(f"   SUPABASE_KEY: {'설정됨' if SUPABASE_KEY else '없음'}")
                 return Response(
                     {
                         "message": "인증 서비스가 구성되지 않았습니다.",
@@ -50,12 +54,14 @@ class LoginView(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
+            print(f"🔐 로그인 시도: {email}")
             auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
                 "password": password
             })
 
             if not auth_response.user:
+                print(f"❌ 로그인 실패: 사용자 없음")
                 return Response(
                     {
                         "message": "아이디 또는 비밀번호가 일치하지 않습니다.",
@@ -64,6 +70,7 @@ class LoginView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
 
+            print(f"✅ 로그인 성공: {auth_response.user.id}")
             # 3. 응답 데이터 구성
             return Response({
                 "access_token": auth_response.session.access_token,
@@ -76,9 +83,12 @@ class LoginView(APIView):
 
         except Exception as e:
             # 4. 예외 처리
+            print(f"❌ 로그인 예외 발생: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response(
                 {
-                    "message": "서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.",
+                    "message": f"서버 오류: {str(e)}",
                     "code": "SERVER_ERROR"
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -91,15 +101,12 @@ class ProfileView(APIView):
 
     GET /api/v1/auth/profile/
     """
-    permission_classes = [AllowAny]  # TODO: IsAuthenticated로 변경 (미들웨어 구현 후)
+    permission_classes = [IsAuthenticatedViaSupabase]
 
     def get(self, request):
         try:
-            # 미들웨어에서 검증된 user_id 사용
-            # TODO: 미들웨어 구현 후 request.user.id로 변경
-            user_id = request.GET.get('user_id')  # 임시 방편
-
-            if not user_id:
+            # 미들웨어에서 검증된 사용자 정보 사용
+            if not getattr(request, 'is_authenticated', False):
                 return Response(
                     {
                         "message": "인증 정보가 없습니다.",
@@ -108,9 +115,7 @@ class ProfileView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
 
-            # Repository를 통해 프로필 조회
-            profile_repo = ProfileRepository()
-            profile = profile_repo.get_by_id(user_id)
+            profile = getattr(request, 'user_profile', None)
 
             if not profile:
                 return Response(
@@ -141,7 +146,7 @@ class LogoutView(APIView):
 
     POST /api/v1/auth/logout/
     """
-    permission_classes = [AllowAny]  # TODO: IsAuthenticated로 변경
+    permission_classes = [IsAuthenticatedViaSupabase]
 
     def post(self, request):
         try:

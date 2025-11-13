@@ -45,20 +45,20 @@ def create_admin_user():
         return
 
     # 이미 존재하는지 확인
-    if Profile.objects.filter(user_id=user_id).exists():
+    if Profile.objects.filter(id=user_id).exists():
         print(f"⚠️  이미 존재하는 사용자입니다: {user_id}")
         return
 
     # Profile 생성
     profile = Profile.objects.create(
-        user_id=user_id,
+        id=user_id,
         email='admin@test.com',
         role='admin'
     )
 
     print()
     print("✅ 관리자 사용자 생성 완료!")
-    print(f"   - User ID: {profile.user_id}")
+    print(f"   - User ID: {profile.id}")
     print(f"   - Email: {profile.email}")
     print(f"   - Role: {profile.role}")
     print()
@@ -85,20 +85,20 @@ def create_regular_user():
         return
 
     # 이미 존재하는지 확인
-    if Profile.objects.filter(user_id=user_id).exists():
+    if Profile.objects.filter(id=user_id).exists():
         print(f"⚠️  이미 존재하는 사용자입니다: {user_id}")
         return
 
     # Profile 생성
     profile = Profile.objects.create(
-        user_id=user_id,
+        id=user_id,
         email='user@test.com',
         role='user'
     )
 
     print()
     print("✅ 일반 사용자 생성 완료!")
-    print(f"   - User ID: {profile.user_id}")
+    print(f"   - User ID: {profile.id}")
     print(f"   - Email: {profile.email}")
     print(f"   - Role: {profile.role}")
     print()
@@ -120,7 +120,7 @@ def list_users():
 
     for profile in profiles:
         print(f"\n📧 {profile.email}")
-        print(f"   - User ID: {profile.user_id}")
+        print(f"   - User ID: {profile.id}")
         print(f"   - Role: {profile.role}")
         print(f"   - Created: {profile.created_at}")
 

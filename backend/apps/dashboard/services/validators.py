@@ -25,7 +25,7 @@ class DataSchemaValidator:
 
     PUBLICATION_REQUIRED_COLUMNS = [
         '논문ID',
-        '게재일자',
+        '게재일',  # CSV 파일에서는 '게재일'로 사용
         '단과대학',
         '학과',
         '논문제목',
@@ -35,8 +35,7 @@ class DataSchemaValidator:
         '과제번호',
         '과제명',
         '연구책임자',
-        '단과대학',
-        '학과',
+        '소속학과',  # CSV 파일에서는 '소속학과'로 사용
     ]
 
     PROJECT_EXPENSE_REQUIRED_COLUMNS = [
@@ -45,7 +44,7 @@ class DataSchemaValidator:
         '집행일자',
         '집행항목',
         '집행금액',
-        '처리상태',
+        '상태',  # CSV 파일에서는 '상태'로 사용
     ]
 
     @staticmethod
