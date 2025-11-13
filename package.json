@@ -2,7 +2,7 @@
   "name": "university-dashboard",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt && python manage.py collectstatic --noinput",
+    "build": "echo 'Build handled by nixpacks'",
     "start": "cd backend && gunicorn dashboard_project.wsgi --bind 0.0.0.0:$PORT"
   }
 }
