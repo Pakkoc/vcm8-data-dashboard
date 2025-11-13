@@ -86,9 +86,22 @@ class LoginView(APIView):
             print(f"❌ 로그인 예외 발생: {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
+
+            # Supabase 인증 오류는 401로 반환
+            error_message = str(e).lower()
+            if 'invalid login credentials' in error_message or 'auth' in error_message:
+                return Response(
+                    {
+                        "message": "아이디 또는 비밀번호가 일치하지 않습니다.",
+                        "code": "INVALID_CREDENTIALS"
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # 그 외 서버 오류
             return Response(
                 {
-                    "message": f"서버 오류: {str(e)}",
+                    "message": "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
                     "code": "SERVER_ERROR"
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
