@@ -28,9 +28,10 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // 토큰 만료 시 로그인 페이지로 리다이렉트
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // 토큰 만료 또는 인증 실패 시 로그인 페이지로 리다이렉트
       localStorage.removeItem('access_token');
+      localStorage.removeItem('auth-storage');
       window.location.href = '/login';
     }
     return Promise.reject(error);

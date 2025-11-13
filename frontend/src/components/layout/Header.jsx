@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import { authAPI } from '../../api/authAPI';
@@ -5,6 +6,7 @@ import { authAPI } from '../../api/authAPI';
 const Header = () => {
   const { user, isAdmin, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -13,7 +15,6 @@ const Header = () => {
       navigate('/login');
     } catch (error) {
       console.error('로그아웃 실패:', error);
-      // 에러가 발생해도 로컬 로그아웃은 처리
       logout();
       navigate('/login');
     }
@@ -34,12 +35,68 @@ const Header = () => {
             대시보드
           </Link>
 
+          <div
+            className="relative"
+            onMouseEnter={() => setIsDataMenuOpen(true)}
+            onMouseLeave={() => setIsDataMenuOpen(false)}
+          >
+            <button className="hover:text-blue-600 transition-colors">
+              데이터 관리 ▼
+            </button>
+            {isDataMenuOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-md py-2 min-w-[180px] z-50">
+                <Link
+                  to="/colleges"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  단과대학
+                </Link>
+                <Link
+                  to="/departments"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  학과
+                </Link>
+                <Link
+                  to="/students"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  학생
+                </Link>
+                <Link
+                  to="/kpis"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  학과 KPI
+                </Link>
+                <Link
+                  to="/publications"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  논문
+                </Link>
+                <Link
+                  to="/projects"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  연구과제
+                </Link>
+                <Link
+                  to="/expenses"
+                  className="block px-4 py-2 hover:bg-gray-100"
+                >
+                  과제집행내역
+                </Link>
+              </div>
+            )}
+          </div>
+
           {isAdmin() && (
             <Link
               to="/upload"
               className="hover:text-blue-600 transition-colors"
             >
-              데이터 관리
+              파일 업로드
             </Link>
           )}
 

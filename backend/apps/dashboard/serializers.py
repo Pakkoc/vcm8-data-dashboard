@@ -1,5 +1,103 @@
 from rest_framework import serializers
+from .models import (
+    College, Department, Student, DepartmentKPI,
+    Publication, ResearchProject, ProjectExpense
+)
 
+
+# ============= CRUD Serializers =============
+
+class CollegeSerializer(serializers.ModelSerializer):
+    """단과대학 Serializer"""
+    class Meta:
+        model = College
+        fields = ['id', 'name', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    """학과 Serializer"""
+    college_name = serializers.CharField(source='college.name', read_only=True)
+
+    class Meta:
+        model = Department
+        fields = ['id', 'college', 'college_name', 'name', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class StudentSerializer(serializers.ModelSerializer):
+    """학생 Serializer"""
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    college_name = serializers.CharField(source='department.college.name', read_only=True)
+
+    class Meta:
+        model = Student
+        fields = [
+            'id', 'student_id_number', 'name', 'department', 'department_name',
+            'college_name', 'grade', 'program_level', 'status', 'gender',
+            'admission_year', 'advisor_name', 'email', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class DepartmentKPISerializer(serializers.ModelSerializer):
+    """학과 KPI Serializer"""
+    department_name = serializers.CharField(source='department.name', read_only=True)
+
+    class Meta:
+        model = DepartmentKPI
+        fields = [
+            'id', 'department', 'department_name', 'evaluation_year',
+            'employment_rate', 'full_time_faculty_count', 'visiting_faculty_count',
+            'tech_transfer_income', 'international_conferences_count', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class PublicationSerializer(serializers.ModelSerializer):
+    """논문 Serializer"""
+    department_name = serializers.CharField(source='department.name', read_only=True)
+
+    class Meta:
+        model = Publication
+        fields = [
+            'id', 'publication_id_str', 'publication_date', 'department',
+            'department_name', 'title', 'primary_author', 'contributing_authors',
+            'journal_name', 'journal_rank', 'impact_factor', 'is_project_linked',
+            'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class ResearchProjectSerializer(serializers.ModelSerializer):
+    """연구과제 Serializer"""
+    department_name = serializers.CharField(source='department.name', read_only=True)
+
+    class Meta:
+        model = ResearchProject
+        fields = [
+            'id', 'project_number', 'name', 'principal_investigator',
+            'department', 'department_name', 'funding_agency',
+            'total_funding_amount', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class ProjectExpenseSerializer(serializers.ModelSerializer):
+    """과제집행내역 Serializer"""
+    project_name = serializers.CharField(source='project.name', read_only=True)
+    project_number = serializers.CharField(source='project.project_number', read_only=True)
+
+    class Meta:
+        model = ProjectExpense
+        fields = [
+            'id', 'execution_id', 'project', 'project_name', 'project_number',
+            'execution_date', 'item', 'amount', 'status', 'notes', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+# ============= Dashboard Serializers =============
 
 class DashboardSummarySerializer(serializers.Serializer):
     """대시보드 요약 응답 Serializer"""

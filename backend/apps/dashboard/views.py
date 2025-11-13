@@ -1,14 +1,77 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
+from rest_framework.permissions import IsAuthenticated
 import logging
 
 from apps.users.permissions import IsAuthenticatedViaSupabase
 from .services.summary_generator import DashboardSummaryService
-from .serializers import DashboardSummarySerializer
+from .serializers import (
+    DashboardSummarySerializer,
+    CollegeSerializer, DepartmentSerializer, StudentSerializer,
+    DepartmentKPISerializer, PublicationSerializer,
+    ResearchProjectSerializer, ProjectExpenseSerializer
+)
+from .models import (
+    College, Department, Student, DepartmentKPI,
+    Publication, ResearchProject, ProjectExpense
+)
 
 logger = logging.getLogger(__name__)
 
+
+# ============= CRUD ViewSets =============
+
+class CollegeViewSet(viewsets.ModelViewSet):
+    """단과대학 CRUD API"""
+    queryset = College.objects.all().order_by('-created_at')
+    serializer_class = CollegeSerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+class DepartmentViewSet(viewsets.ModelViewSet):
+    """학과 CRUD API"""
+    queryset = Department.objects.select_related('college').all().order_by('-created_at')
+    serializer_class = DepartmentSerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+class StudentViewSet(viewsets.ModelViewSet):
+    """학생 CRUD API"""
+    queryset = Student.objects.select_related('department__college').all().order_by('-created_at')
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+class DepartmentKPIViewSet(viewsets.ModelViewSet):
+    """학과 KPI CRUD API"""
+    queryset = DepartmentKPI.objects.select_related('department').all().order_by('-evaluation_year', '-created_at')
+    serializer_class = DepartmentKPISerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+class PublicationViewSet(viewsets.ModelViewSet):
+    """논문 CRUD API"""
+    queryset = Publication.objects.select_related('department').all().order_by('-publication_date')
+    serializer_class = PublicationSerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+class ResearchProjectViewSet(viewsets.ModelViewSet):
+    """연구과제 CRUD API"""
+    queryset = ResearchProject.objects.select_related('department').all().order_by('-created_at')
+    serializer_class = ResearchProjectSerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+class ProjectExpenseViewSet(viewsets.ModelViewSet):
+    """과제집행내역 CRUD API"""
+    queryset = ProjectExpense.objects.select_related('project__department').all().order_by('-execution_date')
+    serializer_class = ProjectExpenseSerializer
+    permission_classes = [IsAuthenticatedViaSupabase]
+
+
+# ============= Dashboard Views =============
 
 class DashboardSummaryView(APIView):
     """대시보드 요약 데이터 조회 API"""
