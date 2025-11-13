@@ -1,4 +1,4 @@
-먼저 `/docs/userflow.md` 문서를 읽고, 여기 언급된 기능들에대해 01_usecase-writer 에이전트를 사용하여 유스케이스 문서를 작성하라.
+먼저 `/docs/userflow.md` 문서를 읽고, 여기 언급된 기능들에대해 usecase-writer 에이전트를 사용하여 유스케이스 문서를 작성하라.
 
 위 작업을 모두 끝냈다면 다음과 같이 구현작업 진행한다.
 plan-writer 에이전트로 모든 계획을 병렬로 작성한 뒤, implementer 에이전트를 병렬로 사용해서 구현한다.
