@@ -1,7 +1,7 @@
 # Multi-stage build for Node.js + Python application
 
 # Stage 1: Build frontend
-FROM node:18-slim AS frontend-builder
+FROM node:20-slim AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
@@ -9,7 +9,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Python runtime
-FROM python:3.9-slim
+FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
