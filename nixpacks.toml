@@ -14,4 +14,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd backend && gunicorn dashboard_project.wsgi --bind 0.0.0.0:$PORT"
+cmd = "python -m gunicorn dashboard_project.wsgi --bind 0.0.0.0:$PORT --chdir backend"
